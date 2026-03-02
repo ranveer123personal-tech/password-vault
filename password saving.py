@@ -1,6 +1,7 @@
 import os
 import json
 
+from cryptography.fernet import Fernet
 
 def create_new_file(path):
     try:
@@ -9,19 +10,33 @@ def create_new_file(path):
         print(e)
     except Exception as e:
         print(e)
+    key = Fernet.generate_key()
+    security=Fernet(key)
     file=input("Enter the name of the file")
     path1=os.path.join(path,file)
     password_vault_center={'password':[],'website,place,for where':[],'date':[],'importance':[]}
-    a=open(path1,'w')
-    a.write(json.dumps(password_vault_center))
+    json_converter=json.dumps(password_vault_center)
+    a=open(path1,'wb')
+    encrypted_password_vault_center=security.encrypt(json_converter.encode())
+    a.write(encrypted_password_vault_center)
     a.close()
-    return path1
+    key_file_name=input("enter name of the key file for encryption and decryption")
+    key_file_path=os.path.join(path,key_file_name)
+    b=open(key_file_path,'wb')
+    b.write(key)
+    b.close()
+    return path1,key_file_path
 
-def saving_passwords(path):
-    a=open(path,'r+')
+def saving_passwords(path,key_file_path):
+    c=open(key_file_path,'rb')
+    key=c.read()
+    f=Fernet(key)
+    c.close()
+    a=open(path,'rb')
     temp_password_access=a.read()
     a.close()
-    perm_password_access=json.loads(temp_password_access)
+    original_password_manager=f.decrypt(temp_password_access)
+    perm_password_access=json.loads(original_password_manager)
     parameters=perm_password_access.keys()
 
     try:
@@ -34,8 +49,8 @@ def saving_passwords(path):
     try:
         choice=int(input('enter 1 for saving password again 0 for finish'))
         if choice==1:
-            path,updated_dict=saving_passwords(path)
-            perm_password_access.update(updated_dict)
+            path,updated_dict=saving_passwords(path,key_file_path)
+            perm_password_access.extend(updated_dict)
         elif choice==0:
             pass
         else:
@@ -47,20 +62,60 @@ def saving_passwords(path):
 
     return path,perm_password_access
 
-def save_password_dict(path,password_dictionary):
-    b = open(path, 'r+')
+def save_password_dict(path,password_dictionary,key_file_path):
+    c=open(key_file_path,'rb')
+    key=c.read()
+    f=Fernet(key)
+    c.close()
+    b = open(path, 'wb')
     final_password_lst = json.dumps(password_dictionary)
-    b.write(final_password_lst)
+    encrypted_password_vault=f.encrypt(final_password_lst.encode())
+    b.write(encrypted_password_vault)
     b.close()
 
 
-def temp_work():
-    parent = r'E:\top_secret123'
-    path_for_saving_passwords = create_new_file(parent)
-    return path_for_saving_passwords
-a=r"E:\top_secret123\password manager"
-path,updated_dict=saving_passwords(a)
-save_password_dict(path,updated_dict)
+def main():
+    print("1. Create new vault")
+    print("2. Add passwords to existing vault")
+    print("3. View passwords")
+    choice = int(input("enter 1, 2 or 3: "))
 
-# now make a control center or whatever to link all of them and before that save in encrypted form and add decrypt method.
+    if choice == 1:
+        path = input("enter folder name: ")
+        path1, key_file_path = create_new_file(path)
+    elif choice == 2 or choice == 3:
+        path1 = input("enter your vault file path: ")
+        key_file_path = input("enter your key file path: ")
+    else:
+        print("invalid choice")
+        return
+
+    if choice == 3:
+        c = open(key_file_path, 'rb')
+        key = c.read()
+        f = Fernet(key)
+        c.close()
+        a = open(path1, 'rb')
+        data = a.read()
+        a.close()
+        decrypted = f.decrypt(data)
+        passwords = json.loads(decrypted)
+        print("\n--- YOUR PASSWORDS ---")
+        for key, values in passwords.items():
+            print(f"{key}: {values}")
+        return
+
+    while True:
+        choice = int(input("enter 1 to save password 0 to quit: "))
+        if choice == 1:
+            path1, perm_password_access = saving_passwords(path1, key_file_path)
+            save_password_dict(path1, perm_password_access, key_file_path)
+        elif choice == 0:
+            break
+        else:
+            print("enter 1 or 0")
+
+
+main()
+#finish
 
