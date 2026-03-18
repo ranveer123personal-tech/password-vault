@@ -75,6 +75,14 @@ def save_password_dict(path,password_dictionary,key_file_path):
 
 
 def main():
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    config_path = os.path.join(script_dir, "config.txt")
+
+    # NEW: optional one time folder override
+    temp = input("press enter to use default folder or type a folder path for this session only: ").strip()
+    if temp:
+        config_path = os.path.join(temp, "config.txt")
+
     print("1. Create new vault")
     print("2. Add passwords to existing vault")
     print("3. View passwords")
@@ -83,9 +91,29 @@ def main():
     if choice == 1:
         path = input("enter folder name: ")
         path1, key_file_path = create_new_file(path)
+        with open(config_path, 'w') as config:
+            config.write(path1 + "\n")
+            config.write(key_file_path + "\n")
+        print("paths saved to config.txt")
+
     elif choice == 2 or choice == 3:
-        path1 = input("enter your vault file path: ")
-        key_file_path = input("enter your key file path: ")
+        if os.path.exists(config_path):
+            with open(config_path, 'r') as config:
+                path1 = config.readline().strip()
+                key_file_path = config.readline().strip()
+        else:
+            print("no config file found")
+            create_config = input("do you want to create one? enter yes or no: ")
+            if create_config.lower() == "yes":
+                path1 = input("enter your vault file path: ")
+                key_file_path = input("enter your key file path: ")
+                with open(config_path, 'w') as config:
+                    config.write(path1 + "\n")
+                    config.write(key_file_path + "\n")
+                print("config.txt created and paths saved")
+            else:
+                print("cannot proceed without paths")
+                return
     else:
         print("invalid choice")
         return
@@ -115,7 +143,6 @@ def main():
         else:
             print("enter 1 or 0")
 
-
 main()
-#finish
+#finish2
 
